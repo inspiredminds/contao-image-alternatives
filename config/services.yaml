@@ -1,9 +1,4 @@
 services:
-    contao_image_alternatives.image.image_factory:
-        class: InspiredMinds\ContaoImageAlternatives\Image\ImageFactory
-        decorates: contao.image.image_factory
-        arguments: ['@contao_image_alternatives.image.image_factory.inner']
-
     contao_image_alternatives.image.picture_factory:
         class: InspiredMinds\ContaoImageAlternatives\Image\PictureFactory
         decorates: contao.image.picture_factory
@@ -12,11 +7,6 @@ services:
             - '%contao_image_alternatives.alternative_sizes%'
             - '%contao_image_alternatives.predefined_sizes%'
             - '%kernel.project_dir%'
-
-    contao_image_alternatives.image.picture_generator:
-        class: InspiredMinds\ContaoImageAlternatives\Image\PictureGenerator
-        decorates: contao.image.picture_generator
-        arguments: ['@contao_image_alternatives.image.picture_generator.inner']
 
     contao_image_alternatives.data_container.image_alternatives:
         class: InspiredMinds\ContaoImageAlternatives\EventListener\DataContainer\ImageAlternativesListener
