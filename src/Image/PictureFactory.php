@@ -30,7 +30,7 @@ use Webmozart\PathUtil\Path;
 class PictureFactory implements PictureFactoryInterface
 {
     /**
-     * Copy of Contao\CoreBundle\Image\PictureFactory::FORMATS_ORDER
+     * Copy of Contao\CoreBundle\Image\PictureFactory::FORMATS_ORDER.
      */
     private const FORMATS_ORDER = [
         'jxl' => 1,
@@ -142,9 +142,7 @@ class PictureFactory implements PictureFactoryInterface
                     return new Picture($picture->getImg(), $sources);
                 }
             }
-        }
-        elseif (is_numeric($size[2]) && null !== ($imageSize = ImageSizeModel::findByPk($size[2])) && null !== ($sizeItems = ImageSizeItemModel::findVisibleByPid($imageSize->id, ['order' => 'sorting ASC'])))
-        {
+        } elseif (is_numeric($size[2]) && null !== ($imageSize = ImageSizeModel::findByPk($size[2])) && null !== ($sizeItems = ImageSizeItemModel::findVisibleByPid($imageSize->id, ['order' => 'sorting ASC']))) {
             $useAlternatives = false;
 
             foreach ($sizeItems as $sizeItem) {
@@ -199,7 +197,7 @@ class PictureFactory implements PictureFactoryInterface
     }
 
     /**
-     * Copy of Contao\CoreBundle\Image\PictureFactory::createConfigItem
+     * Copy of Contao\CoreBundle\Image\PictureFactory::createConfigItem.
      */
     private function createConfigItem(array $imageSize = null): PictureConfigurationItem
     {
@@ -242,9 +240,9 @@ class PictureFactory implements PictureFactoryInterface
     }
 
     /**
-     * Copy of Contao\CoreBundle\Image\PictureFactory::createConfig
-     * 
-     * @param ImageSizeModel|ImageSizeItemModel $sizeModel 
+     * Copy of Contao\CoreBundle\Image\PictureFactory::createConfig.
+     *
+     * @param ImageSizeModel|ImageSizeItemModel $sizeModel
      */
     private function getFormats(Model $sizeModel): array
     {
@@ -279,7 +277,7 @@ class PictureFactory implements PictureFactoryInterface
     }
 
     /**
-     * @param ImageSizeModel|ImageSizeItemModel $sizeModel 
+     * @param ImageSizeModel|ImageSizeItemModel $sizeModel
      */
     private function getPicture(FilesModel $file, Model $sizeModel): Picture
     {
@@ -292,7 +290,7 @@ class PictureFactory implements PictureFactoryInterface
 
         $options = new ResizeOptions();
         $options->setSkipIfDimensionsMatch((bool) $sizeModel->skipIfDimensionsMatch);
-        
+
         $config = new PictureConfiguration();
         $config->setFormats($this->getFormats($sizeModel));
         $config->setSize($this->createConfigItem($sizeModel->row()));

@@ -133,7 +133,7 @@ class ImageAlternativesListener
 
         if ($row['alternative']) {
             $alternative = $this->translator->trans($row['alternative'], [], 'image_alternatives');
-            $original = str_replace('</div>', ' <span style="color:#999;padding-left:3px">[' . $alternative . ']</span></div>', $original);
+            $original = str_replace('</div>', ' <span style="color:#999;padding-left:3px">['.$alternative.']</span></div>', $original);
         }
 
         return $original;
