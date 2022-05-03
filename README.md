@@ -49,7 +49,7 @@ contao_image_alternatives:
                     media: '(max-width: 480px)'
                     alternative: mobile
                 -
-                    media: '(max-width 800px)'
+                    media: '(max-width: 800px)'
                     alternative: tablet
 ```
 
