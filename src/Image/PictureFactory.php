@@ -55,6 +55,7 @@ class PictureFactory implements PictureFactoryInterface
         $this->predefinedSizes = $predefinedSizes;
         $this->projectDir = $projectDir;
 
+        // Merge the configs
         foreach ($this->predefinedSizes as $name => &$config) {
             if (isset($this->alternativeSizes[$name]['items'], $config['items'])) {
                 foreach ($this->alternativeSizes[$name]['items'] as $alternativeItem) {
