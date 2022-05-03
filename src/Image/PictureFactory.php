@@ -168,7 +168,17 @@ class PictureFactory implements PictureFactoryInterface
                 $picture = $this->getPicture($file, $imageSize);
                 $sources = array_merge($sources, $picture->getSources());
 
-                return new Picture($picture->getImg(), $sources);
+                $img = $picture->getImg();
+
+                if ($imageSize->cssClass) {
+                    $img['class'] = $imageSize->cssClass;
+                }
+
+                if ($imageSize->lazyLoading) {
+                    $img['loading'] = 'lazy';
+                }
+
+                return new Picture($img, $sources);
             }
         }
 
