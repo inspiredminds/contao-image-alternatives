@@ -40,7 +40,7 @@ class Configuration implements ConfigurationInterface
                                         ->scalarNode('media')
                                             ->info('The media query this item applies too (needs to be the same as in the contao.image.sizes entry).')
                                         ->end()
-                                        ->scalarNode('use_alternative')
+                                        ->scalarNode('alternative')
                                             ->info('Defines which image alternative should automatically be used for this item.')
                                         ->end()
                                     ->end()

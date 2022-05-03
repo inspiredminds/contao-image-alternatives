@@ -20,6 +20,7 @@ use Contao\FilesModel;
 use Contao\StringUtil;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Contracts\Translation\TranslatorInterface;
+use tl_image_size_item;
 use Webmozart\PathUtil\Path;
 
 class ImageAlternativesListener
@@ -113,5 +114,28 @@ class ImageAlternativesListener
         $file->save();
 
         return null;
+    }
+
+    public function alternativeOptionsCallback(): array
+    {
+        $options = [];
+
+        foreach ($this->alternatives as $alternative) {
+            $options[$alternative] = $this->translator->trans($alternative, [], 'image_alternatives');
+        }
+
+        return $options;
+    }
+
+    public function imageSizeItemChildRecordCallback(array $row): string
+    {
+        $original = (new tl_image_size_item())->listImageSizeItem($row);
+
+        if ($row['alternative']) {
+            $alternative = $this->translator->trans($row['alternative'], [], 'image_alternatives');
+            $original = str_replace('</div>', ' <span style="color:#999;padding-left:3px">[' . $alternative . ']</span></div>', $original);
+        }
+
+        return $original;
     }
 }

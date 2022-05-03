@@ -17,3 +17,5 @@ services:
             - '%kernel.project_dir%'
         tags:
             - { name: contao.callback, table: tl_files, target: config.onload, method: adjustDataContainer }
+            - { name: contao.callback, table: tl_image_size_item, target: fields.alternative.options, method: alternativeOptionsCallback }
+            - { name: contao.callback, table: tl_image_size_item, target: list.sorting.child_record, method: imageSizeItemChildRecordCallback }

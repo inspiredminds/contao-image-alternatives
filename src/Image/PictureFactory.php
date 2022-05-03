@@ -16,12 +16,33 @@ use Contao\CoreBundle\Image\PictureFactory as ContaoPictureFactory;
 use Contao\CoreBundle\Image\PictureFactoryInterface;
 use Contao\FilesModel;
 use Contao\Image\Picture;
+use Contao\Image\PictureConfiguration;
+use Contao\Image\PictureConfigurationItem;
 use Contao\Image\PictureInterface;
+use Contao\Image\ResizeConfiguration;
+use Contao\Image\ResizeOptions;
+use Contao\ImageSizeItemModel;
+use Contao\ImageSizeModel;
+use Contao\Model;
 use Contao\StringUtil;
 use Webmozart\PathUtil\Path;
 
 class PictureFactory implements PictureFactoryInterface
 {
+    /**
+     * Copy of Contao\CoreBundle\Image\PictureFactory::FORMATS_ORDER
+     */
+    private const FORMATS_ORDER = [
+        'jxl' => 1,
+        'avif' => 2,
+        'heic' => 3,
+        'webp' => 4,
+        'png' => 5,
+        'jpg' => 6,
+        'jpeg' => 7,
+        'gif' => 8,
+    ];
+
     private $inner;
     private $alternativeSizes;
     private $predefinedSizes;
@@ -38,8 +59,8 @@ class PictureFactory implements PictureFactoryInterface
             if (isset($this->alternativeSizes[$name]['items'], $config['items'])) {
                 foreach ($this->alternativeSizes[$name]['items'] as $alternativeItem) {
                     foreach ($config['items'] as &$item) {
-                        if (isset($alternativeItem['useAlternative']) && $item['media'] === $alternativeItem['media']) {
-                            $item['useAlternative'] = $alternativeItem['useAlternative'];
+                        if (isset($alternativeItem['alternative']) && $item['media'] === $alternativeItem['media']) {
+                            $item['alternative'] = $alternativeItem['alternative'];
                         }
                     }
                 }
@@ -71,8 +92,8 @@ class PictureFactory implements PictureFactoryInterface
                 $useAlternatives = false;
 
                 foreach ($predefinedSize['items'] as $item) {
-                    if (!empty($item['useAlternative'])) {
-                        $alternativeFile = $this->getAlternative($file, $item['useAlternative']);
+                    if (!empty($item['alternative'])) {
+                        $alternativeFile = $this->getAlternative($file, $item['alternative']);
 
                         if (null !== $alternativeFile) {
                             $useAlternatives = true;
@@ -92,7 +113,7 @@ class PictureFactory implements PictureFactoryInterface
                         $alternativeSize['items'] = [];
                         $alternativePath = $path;
 
-                        if (!empty($item['useAlternative']) && null !== ($alternativeFile = $this->getAlternative($file, $item['useAlternative']))) {
+                        if (!empty($item['alternative']) && null !== ($alternativeFile = $this->getAlternative($file, $item['alternative']))) {
                             // Do not use Path::join here (https://github.com/contao/contao/pull/4596)
                             $alternativePath = $this->projectDir.'/'.$alternativeFile->path;
                         }
@@ -115,11 +136,40 @@ class PictureFactory implements PictureFactoryInterface
                     $this->inner->setPredefinedSizes($this->predefinedSizes);
 
                     $picture = $this->inner->create($path, [0, 0, $alternativeSizeName]);
-                    $img = $picture->getImg();
                     $sources = array_merge($sources, $picture->getSources());
 
-                    return new Picture($img, $sources);
+                    return new Picture($picture->getImg(), $sources);
                 }
+            }
+        }
+        elseif (is_numeric($size[2]) && null !== ($imageSize = ImageSizeModel::findByPk($size[2])) && null !== ($sizeItems = ImageSizeItemModel::findVisibleByPid($imageSize->id, ['order' => 'sorting ASC'])))
+        {
+            $useAlternatives = false;
+
+            foreach ($sizeItems as $sizeItem) {
+                if (!empty($sizeItem->alternative)) {
+                    $alternativeFile = $this->getAlternative($file, $sizeItem->alternative);
+
+                    if (null !== $alternativeFile) {
+                        $useAlternatives = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($useAlternatives) {
+                $sources = [];
+
+                foreach ($sizeItems as $sizeItem) {
+                    $picture = $this->getPicture($file, $sizeItem);
+                    $sources = array_merge($sources, $picture->getSources());
+                    $sources[] = $picture->getImg();
+                }
+
+                $picture = $this->getPicture($file, $imageSize);
+                $sources = array_merge($sources, $picture->getSources());
+
+                return new Picture($picture->getImg(), $sources);
             }
         }
 
@@ -145,5 +195,107 @@ class PictureFactory implements PictureFactoryInterface
         }
 
         return $alternativeFile;
+    }
+
+    /**
+     * Copy of Contao\CoreBundle\Image\PictureFactory::createConfigItem
+     */
+    private function createConfigItem(array $imageSize = null): PictureConfigurationItem
+    {
+        $configItem = new PictureConfigurationItem();
+        $resizeConfig = new ResizeConfiguration();
+
+        if (null !== $imageSize) {
+            if (isset($imageSize['width'])) {
+                $resizeConfig->setWidth((int) $imageSize['width']);
+            }
+
+            if (isset($imageSize['height'])) {
+                $resizeConfig->setHeight((int) $imageSize['height']);
+            }
+
+            if (isset($imageSize['zoom'])) {
+                $resizeConfig->setZoomLevel((int) $imageSize['zoom']);
+            }
+
+            if (isset($imageSize['resizeMode'])) {
+                $resizeConfig->setMode((string) $imageSize['resizeMode']);
+            }
+
+            $configItem->setResizeConfig($resizeConfig);
+
+            if (isset($imageSize['sizes'])) {
+                $configItem->setSizes((string) $imageSize['sizes']);
+            }
+
+            if (isset($imageSize['densities'])) {
+                $configItem->setDensities((string) $imageSize['densities']);
+            }
+
+            if (isset($imageSize['media'])) {
+                $configItem->setMedia((string) $imageSize['media']);
+            }
+        }
+
+        return $configItem;
+    }
+
+    /**
+     * Copy of Contao\CoreBundle\Image\PictureFactory::createConfig
+     * 
+     * @param ImageSizeModel|ImageSizeItemModel $sizeModel 
+     */
+    private function getFormats(Model $sizeModel): array
+    {
+        $formats = [];
+
+        if (empty($sizeModel->formats)) {
+            return $formats;
+        }
+
+        $formatsString = implode(';', StringUtil::deserialize($sizeModel->formats, true));
+
+        foreach (explode(';', $formatsString) as $format) {
+            [$source, $targets] = explode(':', $format, 2);
+            $targets = explode(',', $targets);
+
+            if (!isset($formats[$source])) {
+                $formats[$source] = $targets;
+                continue;
+            }
+
+            $formats[$source] = array_unique(array_merge($formats[$source], $targets));
+
+            usort(
+                $formats[$source],
+                static function ($a, $b) {
+                    return (self::FORMATS_ORDER[$a] ?? $a) <=> (self::FORMATS_ORDER[$b] ?? $b);
+                }
+            );
+        }
+
+        return $formats;
+    }
+
+    /**
+     * @param ImageSizeModel|ImageSizeItemModel $sizeModel 
+     */
+    private function getPicture(FilesModel $file, Model $sizeModel): Picture
+    {
+        $path = $this->projectDir.'/'.$file->path;
+
+        if (!empty($sizeModel->alternative) && null !== ($alternativeFile = $this->getAlternative($file, $sizeModel->alternative))) {
+            // Do not use Path::join here (https://github.com/contao/contao/pull/4596)
+            $path = $this->projectDir.'/'.$alternativeFile->path;
+        }
+
+        $options = new ResizeOptions();
+        $options->setSkipIfDimensionsMatch((bool) $sizeModel->skipIfDimensionsMatch);
+        
+        $config = new PictureConfiguration();
+        $config->setFormats($this->getFormats($sizeModel));
+        $config->setSize($this->createConfigItem($sizeModel->row()));
+
+        return $this->inner->create($path, $config, $options);
     }
 }
