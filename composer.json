@@ -1,6 +1,6 @@
 {
     "name": "inspiredminds/contao-image-alternatives",
-    "description": "Contao extension to integrate GLightbox.",
+    "description": "Contao extension to provide the possibility of defining alternative images to be used on different output devices.",
     "type": "contao-bundle",
     "license": "LGPL-3.0-or-later",
     "homepage": "https://github.com/inspiredminds/contao-image-alternatives",
