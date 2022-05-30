@@ -13,6 +13,7 @@ declare(strict_types=1);
 use Contao\CoreBundle\DataContainer\PaletteManipulator;
 
 $GLOBALS['TL_DCA']['tl_image_size_item']['fields']['alternative'] = [
+    'exclude' => true,
     'inputType' => 'select',
     'eval' => ['includeBlankOption' => true, 'tl_class' => 'w50'],
     'sql' => ['type' => 'string', 'length' => 32, 'default' => ''],
