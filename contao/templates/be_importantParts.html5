@@ -1,0 +1,3 @@
+<p>Hello World!</p>
+
+<?php $this->insert('image', $this->getImageData()); ?>
