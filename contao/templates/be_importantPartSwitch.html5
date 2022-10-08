@@ -1,0 +1,9 @@
+<div class="w50 widget widget-importantPartSwitch">
+  <h3><label for="ctrl_importantPartSwitch"><?= $this->trans('tl_files.importantPartSwitch.0') ?></label></h3>
+  <select class="tl_select" id="ctrl_importantPartSwitch" name="importantPartSwitch"><option value="default">-</option>
+    <?php foreach ($this->alternatives as $alternative): ?>
+      <option value="<?= $alternative ?>"><?= $this->trans($alternative, [], 'image_alternatives') ?></option>
+    <?php endforeach; ?>
+  </select>
+  <p class="tl_help tl_tip"><?= $this->trans('tl_files.importantPartSwitch.1') ?></p>
+</div>

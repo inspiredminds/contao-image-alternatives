@@ -36,6 +36,25 @@ class ImportantPartsListener
             ];
         }
 
-        return json_encode($importantParts, \JSON_PRETTY_PRINT);
+        return json_encode((object) $importantParts, \JSON_PRETTY_PRINT);
+    }
+
+    /**
+     * @Callback(table="tl_files", target="fields.importantParts.save")
+     */
+    public function importantPartsSaveCallback($value, DataContainer $dc): string
+    {
+        $importantParts = (!empty($value) ? json_decode($value, true) : []) ?: [];
+
+        $file = FilesModel::findByPath($dc->id);
+
+        $file->importantPartX = $importantParts['default']['x'] ?? 0;
+        $file->importantPartY = $importantParts['default']['y'] ?? 0;
+        $file->importantPartWidth = $importantParts['default']['width'] ?? 0;
+        $file->importantPartHeight = $importantParts['default']['height'] ?? 0;
+
+        $file->save();
+
+        return $value;
     }
 }
