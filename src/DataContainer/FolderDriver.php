@@ -23,7 +23,6 @@ class FolderDriver extends DC_Folder
         $row = parent::row($palette);
 
         if ('name' === $this->strField && null !== $this->objActiveRecord && 'file' === $this->objActiveRecord->type) {
-            //$row = '<style>.tl_edit_preview_important_part { user-select: none; touch-action: none; }</style>'.$row;
             $row = preg_replace('~<script>Backend\\.editPreviewWizard\\(\\$\\(\'ctrl_preview_[a-z0-9]+\'\\)\\);</script>~', '', $row, -1, $count);
 
             if ($count > 0) {
