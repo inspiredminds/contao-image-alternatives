@@ -55,6 +55,7 @@ class ImportantPartsListener
 
         $file->save();
 
-        return $value;
+        // "compress" JSON
+        return json_encode((object) $importantParts);
     }
 }
