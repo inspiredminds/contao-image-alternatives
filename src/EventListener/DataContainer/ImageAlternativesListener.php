@@ -60,7 +60,7 @@ class ImageAlternativesListener
             return;
         }
 
-        if (!\in_array($file->extension, explode(',', Config::get('validImageTypes')), true)) {
+        if ('folder' === $file->type || !\in_array($file->extension, explode(',', Config::get('validImageTypes')), true)) {
             return;
         }
 

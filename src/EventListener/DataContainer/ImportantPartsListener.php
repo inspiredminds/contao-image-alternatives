@@ -12,12 +12,57 @@ declare(strict_types=1);
 
 namespace InspiredMinds\ContaoImageAlternatives\EventListener\DataContainer;
 
+use Contao\Config;
+use Contao\CoreBundle\DataContainer\PaletteManipulator;
 use Contao\CoreBundle\ServiceAnnotation\Callback;
 use Contao\DataContainer;
+use Contao\Dbafs;
 use Contao\FilesModel;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Webmozart\PathUtil\Path;
 
 class ImportantPartsListener
 {
+    private $requestStack;
+    private $projectDir;
+
+    public function __construct(RequestStack $requestStack, string $projectDir)
+    {
+        $this->requestStack = $requestStack;
+        $this->projectDir = $projectDir;
+    }
+
+    /**
+     * @Callback(table="tl_files", target="config.onload")
+     */
+    public function adjustPalettes(DataContainer $dc): void
+    {
+        $request = $this->requestStack->getCurrentRequest();
+
+        if ('edit' !== $request->query->get('act')) {
+            return;
+        }
+
+        if (!file_exists(Path::join($this->projectDir, $dc->id))) {
+            return;
+        }
+
+        $file = Dbafs::addResource($dc->id);
+
+        if (null === $file) {
+            return;
+        }
+
+        if ('file' !== $file->type || !\in_array($file->extension, explode(',', Config::get('validImageTypes')), true)) {
+            return;
+        }
+
+        PaletteManipulator::create()
+            ->addField('importantParts', 'importantPartHeight')
+            ->applyToPalette('default', 'tl_files')
+        ;
+    }
+
     /**
      * @Callback(table="tl_files", target="fields.importantParts.load")
      */

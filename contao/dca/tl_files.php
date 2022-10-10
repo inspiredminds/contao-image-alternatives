@@ -34,7 +34,6 @@ $GLOBALS['TL_DCA']['tl_files']['fields']['alternatives'] = [
 ];
 
 PaletteManipulator::create()
-    ->addField('importantParts', 'importantPartHeight')
     ->removeField('importantPartX')
     ->removeField('importantPartY')
     ->removeField('importantPartWidth')

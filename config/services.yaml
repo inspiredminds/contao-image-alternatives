@@ -24,3 +24,6 @@ services:
     contao_image_alternatives.data_container.important_parts:
         class: InspiredMinds\ContaoImageAlternatives\EventListener\DataContainer\ImportantPartsListener
         autoconfigure: true
+        arguments:
+            - '@request_stack'
+            - '%kernel.project_dir%'
