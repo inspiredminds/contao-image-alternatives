@@ -12,9 +12,12 @@ declare(strict_types=1);
 
 namespace InspiredMinds\ContaoImageAlternatives\Image;
 
+use Contao\CoreBundle\Image\ImageFactoryInterface;
 use Contao\CoreBundle\Image\PictureFactory as ContaoPictureFactory;
 use Contao\CoreBundle\Image\PictureFactoryInterface;
 use Contao\FilesModel;
+use Contao\Image\ImageInterface;
+use Contao\Image\ImportantPart;
 use Contao\Image\Picture;
 use Contao\Image\PictureConfiguration;
 use Contao\Image\PictureConfigurationItem;
@@ -44,29 +47,18 @@ class PictureFactory implements PictureFactoryInterface
     ];
 
     private $inner;
+    private $imageFactory;
     private $alternativeSizes;
     private $predefinedSizes;
     private $projectDir;
 
-    public function __construct(ContaoPictureFactory $inner, array $alternativeSizes, array $predefinedSizes, string $projectDir)
+    public function __construct(ContaoPictureFactory $inner, ImageFactoryInterface $imageFactory, array $alternativeSizes, array $predefinedSizes, string $projectDir)
     {
         $this->inner = $inner;
+        $this->imageFactory = $imageFactory;
         $this->alternativeSizes = $alternativeSizes;
-        $this->predefinedSizes = $predefinedSizes;
+        $this->predefinedSizes = $this->mergeImageSizes($predefinedSizes, $alternativeSizes);
         $this->projectDir = $projectDir;
-
-        // Merge the configs
-        foreach ($this->predefinedSizes as $name => &$config) {
-            if (isset($this->alternativeSizes[$name]['items'], $config['items'])) {
-                foreach ($this->alternativeSizes[$name]['items'] as $alternativeItem) {
-                    foreach ($config['items'] as &$item) {
-                        if (isset($alternativeItem['alternative']) && $item['media'] === $alternativeItem['media']) {
-                            $item['alternative'] = $alternativeItem['alternative'];
-                        }
-                    }
-                }
-            }
-        }
     }
 
     public function setDefaultDensities($densities): void
@@ -95,8 +87,9 @@ class PictureFactory implements PictureFactoryInterface
                 foreach ($predefinedSize['items'] as $item) {
                     if (!empty($item['alternative'])) {
                         $alternativeFile = $this->getAlternative($file, $item['alternative']);
+                        $importantParts = $this->getImportantParts($alternativeFile ?? $file);
 
-                        if (null !== $alternativeFile) {
+                        if (null !== $alternativeFile || isset($importantParts[$item['alternative']])) {
                             $useAlternatives = true;
                             break;
                         }
@@ -112,17 +105,40 @@ class PictureFactory implements PictureFactoryInterface
                         $alternativeSize = $item;
                         $alternativeSize['formats'] = $predefinedSize['formats'] ?? null;
                         $alternativeSize['items'] = [];
-                        $alternativePath = $path;
+                        $itemPath = $path;
+                        $alternativeFile = null;
 
                         if (!empty($item['alternative']) && null !== ($alternativeFile = $this->getAlternative($file, $item['alternative']))) {
                             // Do not use Path::join here (https://github.com/contao/contao/pull/4596)
-                            $alternativePath = $this->projectDir.'/'.$alternativeFile->path;
+                            $itemPath = $this->projectDir.'/'.$alternativeFile->path;
                         }
 
                         $this->predefinedSizes[$alternativeSizeName] = $alternativeSize;
                         $this->inner->setPredefinedSizes($this->predefinedSizes);
 
-                        $picture = $this->inner->create($alternativePath, [0, 0, $alternativeSizeName]);
+                        if ($itemPath instanceof ImageInterface) {
+                            $itemImage = $itemPath;
+                        } else {
+                            $itemImage = $this->imageFactory->create($itemPath);
+                        }
+
+                        $importantParts = $this->getImportantParts($alternativeFile ?? $file);
+
+                        // Override the important part
+                        if (!empty($item['alternative']) && isset($importantParts[$item['alternative']])) {
+                            $importantPart = $importantParts[$item['alternative']];
+
+                            if ((float) $importantPart['width'] > 0 && (float) $importantPart['height'] > 0) {
+                                $itemImage->setImportantPart(new ImportantPart(
+                                    (float) $importantPart['x'],
+                                    (float) $importantPart['y'],
+                                    (float) $importantPart['width'],
+                                    (float) $importantPart['height']
+                                ));
+                            }
+                        }
+
+                        $picture = $this->inner->create($itemImage, [0, 0, $alternativeSizeName]);
                         $sources = array_merge($sources, $picture->getSources());
                         $sources[] = $picture->getImg();
 
@@ -148,8 +164,9 @@ class PictureFactory implements PictureFactoryInterface
             foreach ($sizeItems as $sizeItem) {
                 if (!empty($sizeItem->alternative)) {
                     $alternativeFile = $this->getAlternative($file, $sizeItem->alternative);
+                    $importantParts = $this->getImportantParts($alternativeFile ?? $file);
 
-                    if (null !== $alternativeFile) {
+                    if (null !== $alternativeFile || isset($importantParts[$sizeItem->alternative])) {
                         $useAlternatives = true;
                         break;
                     }
@@ -292,6 +309,7 @@ class PictureFactory implements PictureFactoryInterface
     private function getPicture(FilesModel $file, Model $sizeModel): Picture
     {
         $path = $this->projectDir.'/'.$file->path;
+        $alternativeFile = null;
 
         if (!empty($sizeModel->alternative) && null !== ($alternativeFile = $this->getAlternative($file, $sizeModel->alternative))) {
             // Do not use Path::join here (https://github.com/contao/contao/pull/4596)
@@ -305,6 +323,49 @@ class PictureFactory implements PictureFactoryInterface
         $config->setFormats($this->getFormats($sizeModel));
         $config->setSize($this->createConfigItem($sizeModel->row()));
 
-        return $this->inner->create($path, $config, $options);
+        $image = $this->imageFactory->create($path);
+        $importantParts = $this->getImportantParts($alternativeFile ?? $file);
+
+        // Override the important part
+        if (!empty($sizeModel->alternative) && isset($importantParts[$sizeModel->alternative])) {
+            $importantPart = $importantParts[$sizeModel->alternative];
+
+            if ((float) $importantPart['width'] > 0 && (float) $importantPart['height'] > 0) {
+                $image->setImportantPart(new ImportantPart(
+                    (float) $importantPart['x'],
+                    (float) $importantPart['y'],
+                    (float) $importantPart['width'],
+                    (float) $importantPart['height']
+                ));
+            }
+        }
+
+        return $this->inner->create($image, $config, $options);
+    }
+
+    private function mergeImageSizes(array $predefinedSizes, array $alternativeSizes): array
+    {
+        foreach ($predefinedSizes as $name => &$config) {
+            if (isset($alternativeSizes[$name]['items'], $config['items'])) {
+                foreach ($alternativeSizes[$name]['items'] as $alternativeItem) {
+                    foreach ($config['items'] as &$item) {
+                        if (isset($alternativeItem['alternative']) && $item['media'] === $alternativeItem['media']) {
+                            $item['alternative'] = $alternativeItem['alternative'];
+                        }
+                    }
+                }
+            }
+        }
+
+        return $predefinedSizes;
+    }
+
+    private function getImportantParts(FilesModel $file): array
+    {
+        if (empty($file->importantParts)) {
+            return [];
+        }
+
+        return json_decode($file->importantParts, true);
     }
 }

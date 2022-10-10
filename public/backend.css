@@ -1,0 +1,8 @@
+.widget-importantPartSwitch + .widget {
+    clear: both;
+}
+
+.widget-importantPartSwitch + .widget:before {
+    content: "";
+    display: table;
+}
