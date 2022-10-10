@@ -55,6 +55,11 @@ class ImportantPartsListener
 
         $file->save();
 
+        // Remove any invalid entries
+        $importantParts = array_filter($importantParts, function (array $importantPart): bool {
+            return (float) $importantPart['width'] > 0 && (float) $importantPart['height'] > 0;
+        });
+
         // "compress" JSON
         return json_encode((object) $importantParts);
     }
