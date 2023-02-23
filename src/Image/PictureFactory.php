@@ -68,6 +68,8 @@ class PictureFactory implements PictureFactoryInterface
 
     public function create($path, $size = null): PictureInterface
     {
+        $size = StringUtil::deserialize($size);
+
         if (\is_int($size) || \is_string($size)) {
             $size = [0, 0, $size];
         }
