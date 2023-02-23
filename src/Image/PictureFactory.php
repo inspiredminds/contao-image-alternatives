@@ -68,7 +68,7 @@ class PictureFactory implements PictureFactoryInterface
 
     public function create($path, $size = null): PictureInterface
     {
-        if (\is_integer($size) || \is_string($size)) {
+        if (\is_int($size) || \is_string($size)) {
             $size = [0, 0, $size];
         }
 

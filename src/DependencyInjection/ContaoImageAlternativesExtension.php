@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace InspiredMinds\ContaoImageAlternatives\DependencyInjection;
 
+use Contao\CoreBundle\DependencyInjection\Configuration as ContaoConfig;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -35,19 +36,29 @@ class ContaoImageAlternativesExtension extends Extension implements PrependExten
 
     public function prepend(ContainerBuilder $container): void
     {
-        $contaoConfigs = $container->getExtensionConfig('contao');
+        $contaoConfig = new ContaoConfig((string) $container->getParameter('kernel.project_dir'));
+        $config = $this->processConfiguration($contaoConfig, $container->getExtensionConfig('contao'));
 
-        $sizes = [];
+        $imageSizes = [];
 
-        foreach ($contaoConfigs as $config) {
-            if (!isset($config['image']['sizes'])) {
+        // Do not add a size with the special name "_defaults" but merge its values into all other definitions instead.
+        foreach ($config['image']['sizes'] as $name => $value) {
+            if ('_defaults' === $name) {
                 continue;
             }
 
-            $sizes = array_merge($sizes, $config['image']['sizes']);
+            if (isset($config['image']['sizes']['_defaults'])) {
+                // Make sure that arrays defined under _defaults will take precedence over empty arrays (see #2783)
+                $value = array_merge(
+                    $config['image']['sizes']['_defaults'],
+                    array_filter($value, static fn ($v) => !\is_array($v) || !empty($v))
+                );
+            }
+
+            $imageSizes[$name] = $value;
         }
 
-        $container->setParameter('contao_image_alternatives.predefined_sizes', $this->processImageSizes($sizes));
+        $container->setParameter('contao_image_alternatives.predefined_sizes', $this->processImageSizes($imageSizes));
     }
 
     private function processImageSizes(array $sizes): array
