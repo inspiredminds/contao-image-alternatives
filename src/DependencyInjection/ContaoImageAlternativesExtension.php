@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace InspiredMinds\ContaoImageAlternatives\DependencyInjection;
 
+use Contao\CoreBundle\Controller\PreviewLinkController;
 use Contao\CoreBundle\DependencyInjection\Configuration as ContaoConfig;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\Container;
@@ -36,7 +37,12 @@ class ContaoImageAlternativesExtension extends Extension implements PrependExten
 
     public function prepend(ContainerBuilder $container): void
     {
-        $contaoConfig = new ContaoConfig((string) $container->getParameter('kernel.project_dir'));
+        if (class_exists(PreviewLinkController::class)) {
+            $contaoConfig = new ContaoConfig((string) $container->getParameter('kernel.project_dir'));
+        } else {
+            $contaoConfig = new ContaoConfig((string) $container->getParameter('kernel.project_dir'), (string) $container->getParameter('kernel.default_locale'));
+        }
+
         $config = $this->processConfiguration($contaoConfig, $container->getExtensionConfig('contao'));
 
         $imageSizes = [];
