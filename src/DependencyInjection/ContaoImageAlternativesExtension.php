@@ -40,7 +40,7 @@ class ContaoImageAlternativesExtension extends Extension implements PrependExten
         if (class_exists(PreviewLinkController::class)) {
             $contaoConfig = new ContaoConfig((string) $container->getParameter('kernel.project_dir'));
         } else {
-            $contaoConfig = new ContaoConfig((string) $container->getParameter('kernel.project_dir'), (string) $container->getParameter('kernel.default_locale'));
+            $contaoConfig = new ContaoConfig((string) $container->getParameter('kernel.project_dir'), '');
         }
 
         $config = $this->processConfiguration($contaoConfig, $container->getExtensionConfig('contao'));
