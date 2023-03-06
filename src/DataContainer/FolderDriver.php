@@ -15,8 +15,19 @@ namespace InspiredMinds\ContaoImageAlternatives\DataContainer;
 use Contao\BackendTemplate;
 use Contao\DC_Folder;
 use Contao\System;
+use InspiredMinds\ContaoFileUsage\DataContainer\FolderDataContainer;
 
-class FolderDriver extends DC_Folder
+if (class_exists(FolderDataContainer::class)) {
+    class FolderParent extends FolderDataContainer
+    {
+    }
+} else {
+    class FolderParent extends DC_Folder
+    {
+    }
+}
+
+class FolderDriver extends FolderParent
 {
     protected function row($palette = null)
     {

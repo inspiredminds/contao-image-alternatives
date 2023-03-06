@@ -7,3 +7,16 @@
   </select>
   <p class="tl_help tl_tip"><?= $this->trans('tl_files.importantPartSwitch.1') ?></p>
 </div>
+<div class="w50 widget widget-aspectRatioSwitch">
+  <h3><label for="ctrl_aspectRatioSwitch"><?= $this->trans('tl_files.aspectRatioSwitch.0') ?></label></h3>
+  <select class="tl_select" id="ctrl_aspectRatioSwitch" name="aspectRatioSwitch">
+    <option value="">-</option>
+    <option value="2:1">2:1</option>
+    <option value="16:9">16:9</option>
+    <option value="16:10">16:10</option>
+    <option value="4:3">4:3</option>
+    <option value="1:1">1:1</option>
+    <option value="3:4">3:4</option>
+  </select>
+  <p class="tl_help tl_tip"><?= $this->trans('tl_files.aspectRatioSwitch.1') ?></p>
+</div>

@@ -1,8 +1,10 @@
-.widget-importantPartSwitch + .widget {
+.widget-importantPartSwitch + .widget,
+.widget-aspectRatioSwitch + .widget {
     clear: both;
 }
 
-.widget-importantPartSwitch + .widget:before {
+.widget-importantPartSwitch + .widget:before,
+.widget-aspectRatioSwitch + .widget:before {
     content: "";
     display: table;
 }

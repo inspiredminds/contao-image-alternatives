@@ -24,6 +24,7 @@ use Contao\Image\PictureConfigurationItem;
 use Contao\Image\PictureInterface;
 use Contao\Image\ResizeConfiguration;
 use Contao\Image\ResizeOptions;
+use Contao\Image\ResizerInterface;
 use Contao\ImageSizeItemModel;
 use Contao\ImageSizeModel;
 use Contao\Model;
@@ -48,14 +49,16 @@ class PictureFactory implements PictureFactoryInterface
 
     private $inner;
     private $imageFactory;
+    private $resizer;
     private $alternativeSizes;
     private $predefinedSizes;
     private $projectDir;
 
-    public function __construct(ContaoPictureFactory $inner, ImageFactoryInterface $imageFactory, array $alternativeSizes, array $predefinedSizes, string $projectDir)
+    public function __construct(ContaoPictureFactory $inner, ImageFactoryInterface $imageFactory, ResizerInterface $resizer, array $alternativeSizes, array $predefinedSizes, string $projectDir)
     {
         $this->inner = $inner;
         $this->imageFactory = $imageFactory;
+        $this->resizer = $resizer;
         $this->alternativeSizes = $alternativeSizes;
         $this->predefinedSizes = $this->mergeImageSizes($predefinedSizes, $alternativeSizes);
         $this->projectDir = $projectDir;
@@ -144,6 +147,10 @@ class PictureFactory implements PictureFactoryInterface
                             }
                         }
 
+                        if ($item['preCrop'] ?? false) {
+                            $itemImage = $this->cropToImportantPart($itemImage);
+                        }
+
                         $picture = $this->inner->create($itemImage, [0, 0, $alternativeSizeName]);
                         $sources = array_merge($sources, $picture->getSources());
                         $sources[] = $picture->getImg();
@@ -158,50 +165,64 @@ class PictureFactory implements PictureFactoryInterface
                     $this->predefinedSizes[$alternativeSizeName] = $alternativeSize;
                     $this->inner->setPredefinedSizes($this->predefinedSizes);
 
+                    if ($this->alternativeSizes[$size[2]]['preCrop'] ?? false) {
+                        $path = $this->cropToImportantPart($path);
+                    }
+
                     $picture = $this->inner->create($path, [0, 0, $alternativeSizeName]);
                     $sources = array_merge($sources, $picture->getSources());
 
                     return new Picture($picture->getImg(), $sources);
                 }
             }
-        } elseif (is_numeric($size[2]) && null !== ($imageSize = ImageSizeModel::findByPk($size[2])) && null !== ($sizeItems = ImageSizeItemModel::findVisibleByPid($imageSize->id, ['order' => 'sorting ASC']))) {
-            $useAlternatives = false;
 
-            foreach ($sizeItems as $sizeItem) {
-                if (!empty($sizeItem->alternative)) {
-                    $alternativeFile = $this->getAlternative($file, $sizeItem->alternative);
-                    $importantParts = $this->getImportantParts($alternativeFile ?? $file);
+            if ($this->alternativeSizes[$size[2]]['preCrop'] ?? false) {
+                $path = $this->cropToImportantPart($path);
+            }
+        } elseif (is_numeric($size[2]) && null !== ($imageSize = ImageSizeModel::findByPk($size[2]))) {
+            if (null !== ($sizeItems = ImageSizeItemModel::findVisibleByPid($imageSize->id, ['order' => 'sorting ASC']))) {
+                $useAlternatives = false;
 
-                    if (null !== $alternativeFile || isset($importantParts[$sizeItem->alternative])) {
-                        $useAlternatives = true;
-                        break;
+                foreach ($sizeItems as $sizeItem) {
+                    if (!empty($sizeItem->alternative)) {
+                        $alternativeFile = $this->getAlternative($file, $sizeItem->alternative);
+                        $importantParts = $this->getImportantParts($alternativeFile ?? $file);
+
+                        if (null !== $alternativeFile || isset($importantParts[$sizeItem->alternative])) {
+                            $useAlternatives = true;
+                            break;
+                        }
                     }
+                }
+
+                if ($useAlternatives) {
+                    $sources = [];
+
+                    foreach ($sizeItems as $sizeItem) {
+                        $picture = $this->getPicture($file, $sizeItem);
+                        $sources = array_merge($sources, $picture->getSources());
+                        $sources[] = $picture->getImg();
+                    }
+
+                    $picture = $this->getPicture($file, $imageSize);
+                    $sources = array_merge($sources, $picture->getSources());
+
+                    $img = $picture->getImg();
+
+                    if ($imageSize->cssClass) {
+                        $img['class'] = $imageSize->cssClass;
+                    }
+
+                    if ($imageSize->lazyLoading) {
+                        $img['loading'] = 'lazy';
+                    }
+
+                    return new Picture($img, $sources);
                 }
             }
 
-            if ($useAlternatives) {
-                $sources = [];
-
-                foreach ($sizeItems as $sizeItem) {
-                    $picture = $this->getPicture($file, $sizeItem);
-                    $sources = array_merge($sources, $picture->getSources());
-                    $sources[] = $picture->getImg();
-                }
-
-                $picture = $this->getPicture($file, $imageSize);
-                $sources = array_merge($sources, $picture->getSources());
-
-                $img = $picture->getImg();
-
-                if ($imageSize->cssClass) {
-                    $img['class'] = $imageSize->cssClass;
-                }
-
-                if ($imageSize->lazyLoading) {
-                    $img['loading'] = 'lazy';
-                }
-
-                return new Picture($img, $sources);
+            if ($imageSize->preCrop) {
+                $path = $this->cropToImportantPart($path);
             }
         }
 
@@ -346,6 +367,10 @@ class PictureFactory implements PictureFactoryInterface
             }
         }
 
+        if ($sizeModel->preCrop) {
+            $image = $this->cropToImportantPart($image);
+        }
+
         return $this->inner->create($image, $config, $options);
     }
 
@@ -373,5 +398,34 @@ class PictureFactory implements PictureFactoryInterface
         }
 
         return json_decode($file->importantParts, true);
+    }
+
+    /**
+     * @param string|ImageInterface $image
+     */
+    private function cropToImportantPart($image): ImageInterface
+    {
+        if (!$image instanceof ImageInterface) {
+            $image = $this->imageFactory->create($image);
+        }
+
+        $importantPart = $image->getImportantPart();
+
+        if ($importantPart->getWidth() <= 0 || $importantPart->getHeight() <= 0) {
+            return $image;
+        }
+
+        $imageSize = $image->getDimensions()->getSize();
+
+        $config = (new ResizeConfiguration())
+            ->setMode(ResizeConfiguration::MODE_CROP)
+            ->setWidth((int) ($imageSize->getWidth() * $importantPart->getWidth()))
+            ->setHeight((int) ($imageSize->getHeight() * $importantPart->getHeight()))
+            ->setZoomLevel(100)
+        ;
+
+        return $this->resizer->resize($image, $config, (new ResizeOptions()))
+            ->setImportantPart(null)
+        ;
     }
 }

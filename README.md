@@ -59,3 +59,16 @@ When you choose the configured image size in your content element or module, the
 ## Alternative Important Parts
 
 It is also possible to set different important parts for each image alternative. When editing an image in the file manager, there will be a an **Important part alternative** selection at the top, with which you can switch between the different important parts. For example if you have set the default important part for an image, plus the important part for the `mobile` alternative, then latter will be used for your `mobile` media query image size item (if configured) and otherwise the default. This allows you to crop the image to different parts for different output devices within the same image.
+
+
+## Pre-Crop
+
+It is also possible to to pre-crop the image to the important part _before_ the image is resized according to the resize settings. This allows you to crop the image to the important part for certain image sizes while otherwise only resizing to a specific width or height. This setting can be set per image size in the database and also via the bundle configuration:
+
+```yaml
+# config/config.yaml
+contao_image_alternatives:
+    sizes:
+        example:
+            pre_crop: true
+```

@@ -5,6 +5,7 @@ services:
         arguments:
             - '@contao_image_alternatives.image.picture_factory.inner'
             - '@contao.image.image_factory'
+            - '@contao.image.resizer'
             - '%contao_image_alternatives.alternative_sizes%'
             - '%contao_image_alternatives.predefined_sizes%'
             - '%kernel.project_dir%'

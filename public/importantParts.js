@@ -124,6 +124,18 @@
 				}
 				event.preventDefault();
 				var imageSize = getComputedSize();
+                var aspectRatioSelect = document.querySelector('select[name="aspectRatioSwitch"]');
+                var aspectRatio = null;
+
+                if (null !== aspectRatioSelect) {
+                    var aspectRatioValue = aspectRatioSelect.value;
+
+                    if (aspectRatioValue) {
+                        var aspectRatioArray = aspectRatioValue.split(':');
+                        aspectRatio = aspectRatioArray[1] / aspectRatioArray[0];
+                    }
+                }
+                
 				var rect = {
 					x: [
 						Math.max(0, Math.min(imageSize.width, startPos.x)),
@@ -134,6 +146,29 @@
 						Math.max(0, Math.min(imageSize.height, event.clientY - el.getBoundingClientRect().y - imageSize.computedTop))
 					]
 				};
+
+                if (null !== aspectRatio) {
+                    if (startPos.y < rect.y[1]) {
+                        rect.y[1] = rect.y[0] + (Math.abs(rect.x[1] - rect.x[0]) * aspectRatio);
+                    } else {
+                        rect.y[1] = rect.y[0] - (Math.abs(rect.x[1] - rect.x[0]) * aspectRatio);
+                    }
+
+                    if (rect.y[1] >= imageSize.height) {
+                        rect.x[1] = Math.max(0, Math.min(imageSize.width, rect.x[0] + ((imageSize.height - rect.y[0]) * (1 / aspectRatio))));
+                        rect.y[1] = imageSize.height;
+                    }
+
+                    if (rect.y[1] <= 0) {
+                        if (startPos.x < rect.x[1]) {
+                            rect.x[1] = Math.max(0, Math.min(imageSize.width, rect.x[0] + (rect.y[0] * (1 / aspectRatio))));
+                        } else {
+                            rect.x[1] = Math.max(0, Math.min(imageSize.width, rect.x[0] - (rect.y[0] * (1 / aspectRatio))));
+                        }
+                        rect.y[1] = 0;
+                    }
+                }
+
                 partElement.style.top = Math.min(rect.y[0], rect.y[1]) + imageSize.computedTop + 'px',
                 partElement.style.left = Math.min(rect.x[0], rect.x[1]) + imageSize.computedLeft + 'px',
                 partElement.style.width = Math.abs(rect.x[0] - rect.x[1]) + 'px',
