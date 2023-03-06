@@ -199,6 +199,7 @@ class PictureFactory implements PictureFactoryInterface
                     $sources = [];
 
                     foreach ($sizeItems as $sizeItem) {
+                        $sizeItem->preCrop = $imageSize->preCrop;
                         $picture = $this->getPicture($file, $sizeItem);
                         $sources = array_merge($sources, $picture->getSources());
                         $sources[] = $picture->getImg();
