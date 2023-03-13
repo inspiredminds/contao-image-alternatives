@@ -16,6 +16,8 @@ use Contao\CoreBundle\Image\ImageFactoryInterface;
 use Contao\CoreBundle\Image\PictureFactory as ContaoPictureFactory;
 use Contao\CoreBundle\Image\PictureFactoryInterface;
 use Contao\FilesModel;
+use Contao\Image\DeferredImageInterface;
+use Contao\Image\DeferredResizerInterface;
 use Contao\Image\ImageInterface;
 use Contao\Image\ImportantPart;
 use Contao\Image\Picture;
@@ -425,8 +427,28 @@ class PictureFactory implements PictureFactoryInterface
             ->setZoomLevel(100)
         ;
 
-        return $this->resizer->resize($image, $config, (new ResizeOptions()))
+        $image = $this->resizer
+            ->resize($image, $config, (new ResizeOptions()))
             ->setImportantPart(null)
         ;
+
+        // If there are legacy hooks in use, the image needs to be generated inline before
+        if ($this->hasExecuteResizeHook() || $this->hasGetImageHook()) {
+            if ($image instanceof DeferredImageInterface && $this->resizer instanceof DeferredResizerInterface) {
+                $image = $this->resizer->resizeDeferredImage($image);
+            }
+        }
+
+        return $image;
+    }
+
+    private function hasExecuteResizeHook(): bool
+    {
+        return !empty($GLOBALS['TL_HOOKS']['executeResize']) && \is_array($GLOBALS['TL_HOOKS']['executeResize']);
+    }
+
+    private function hasGetImageHook(): bool
+    {
+        return !empty($GLOBALS['TL_HOOKS']['getImage']) && \is_array($GLOBALS['TL_HOOKS']['getImage']);
     }
 }
