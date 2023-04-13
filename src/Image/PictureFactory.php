@@ -303,6 +303,14 @@ class PictureFactory implements PictureFactoryInterface
      */
     private function getFormats(Model $sizeModel): array
     {
+        if ($sizeModel instanceof ImageSizeItemModel) {
+            $sizeModel = $sizeModel->getRelated('pid');
+        }
+
+        if (!$sizeModel instanceof ImageSizeModel) {
+            throw new \InvalidArgumentException('$sizeModel is not an instance of ImageSizeModel');
+        }
+
         $formats = [];
 
         if (empty($sizeModel->formats)) {
