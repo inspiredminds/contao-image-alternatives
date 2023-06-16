@@ -149,7 +149,7 @@ class PictureFactory implements PictureFactoryInterface
                             }
                         }
 
-                        if ($item['preCrop'] ?? false) {
+                        if ($this->alternativeSizes[$size[2]]['preCrop'] ?? false) {
                             $itemImage = $this->cropToImportantPart($itemImage);
                         }
 
