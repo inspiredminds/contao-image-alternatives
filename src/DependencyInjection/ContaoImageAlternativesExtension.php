@@ -3,11 +3,7 @@
 declare(strict_types=1);
 
 /*
- * This file is part of the Contao Image Alternatives extension.
- *
- * (c) inspiredminds
- *
- * @license LGPL-3.0-or-later
+ * (c) INSPIRED MINDS
  */
 
 namespace InspiredMinds\ContaoImageAlternatives\DependencyInjection;
@@ -57,7 +53,7 @@ class ContaoImageAlternativesExtension extends Extension implements PrependExten
                 // Make sure that arrays defined under _defaults will take precedence over empty arrays (see #2783)
                 $value = array_merge(
                     $config['image']['sizes']['_defaults'],
-                    array_filter($value, static fn ($v) => !\is_array($v) || !empty($v))
+                    array_filter($value, static fn ($v) => !\is_array($v) || [] !== $v),
                 );
             }
 

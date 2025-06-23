@@ -3,11 +3,7 @@
 declare(strict_types=1);
 
 /*
- * This file is part of the Contao Image Alternatives extension.
- *
- * (c) inspiredminds
- *
- * @license LGPL-3.0-or-later
+ * (c) INSPIRED MINDS
  */
 
 namespace InspiredMinds\ContaoImageAlternatives\DataContainer;
@@ -40,9 +36,6 @@ class FolderDriver extends FolderParent
                 $template = new BackendTemplate('be_importantPartSwitch');
                 $template->alternatives = System::getContainer()->getParameter('contao_image_alternatives.alternatives');
                 $row = $template->parse().$row;
-
-                $GLOBALS['TL_JAVASCRIPT'][] = 'bundles/contaoimagealternatives/importantParts.js|static|async';
-                $GLOBALS['TL_CSS'][] = 'bundles/contaoimagealternatives/backend.css|static';
             }
         }
 

@@ -23,14 +23,13 @@
         }
     ],
     "require": {
-        "php": ">=7.1",
-        "contao/core-bundle": "^4.9",
-        "symfony/config": "^4.4 || ^5.1",
-        "symfony/dependency-injection": "^4.4 || ^5.1",
-        "symfony/http-foundation": "^4.4 || ^5.1",
-        "symfony/http-kernel": "^4.4 || ^5.1",
-        "symfony/translation": "^4.4 || ^5.1",
-        "webmozart/path-util": "^2.2"
+        "php": ">=8.2",
+        "contao/core-bundle": "^5.3",
+        "symfony/config": "^6.4 || ^7.3",
+        "symfony/dependency-injection": "^6.4 || ^7.3",
+        "symfony/http-foundation": "^6.4 || ^7.3",
+        "symfony/http-kernel": "^6.4 || ^7.3",
+        "symfony/translation": "^6.4 || ^7.3"
     },
     "autoload": {
         "psr-4": {
@@ -41,11 +40,15 @@
         "contao-manager-plugin": "InspiredMinds\\ContaoImageAlternatives\\ContaoManager\\Plugin"
     },
     "require-dev": {
-        "friendsofphp/php-cs-fixer": "^2.16 || ^3.0"
+        "contao/easy-coding-standard": "^6.0",
+        "contao/rector": "^1.0"
     },
     "config": {
         "allow-plugins": {
-            "contao-components/installer": true
+            "contao-components/installer": true,
+            "contao/manager-plugin": true,
+            "php-http/discovery": false,
+            "dealerdirect/phpcodesniffer-composer-installer": true
         }
     }
 }

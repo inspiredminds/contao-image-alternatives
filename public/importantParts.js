@@ -1,7 +1,7 @@
 (function(){
     'use strict';
 
-    let mainInitialized = false;
+    let initialized = new WeakMap();
     let importantPartsInput = null;
 
     const getImportantPartData = (alternative) => {
@@ -183,6 +183,7 @@
                 inputElements = getImportantPartData(getCurrentAlternative());
                 el.classList.add('tl_edit_preview_enabled');
                 partElement = document.createElement('div');
+                partElement.setAttribute('data-turbo-temporary', '');
                 partElement.classList.add('tl_edit_preview_important_part');
                 el.appendChild(partElement);
 				updateImage();
@@ -206,29 +207,31 @@
 	};
 
     const mainInit = (element) => {
-        if (mainInitialized) {
+        if (initialized.has(element)) {
             return;
         }
 
-        mainInitialized = true;
+        initialized.set(element, true);
 
         importantPartsInput = element;
         importantPartsInput.closest('.widget').style.display = 'none';
         editPreviewWizard();
     };
 
-    importantPartsInput = document.getElementById('ctrl_importantParts');
+    const selector = '#ctrl_importantParts';
 
-    if (null !== importantPartsInput) {
-        mainInit(importantPartsInput);
-    }
+    document.querySelectorAll(selector).forEach(element => mainInit(element));
 
     new MutationObserver(function (mutationsList) {
         for (const mutation of mutationsList) {
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach(function (element) {
-                    if (element.matches && element.matches('#ctrl_importantParts')) {
+                    if (element.matches && element.matches(selector)) {
                         mainInit(element);
+                    }
+
+                    if (element.querySelectorAll) {
+                        element.querySelectorAll(selector).forEach(element => mainInit(element));
                     }
                 })
             }

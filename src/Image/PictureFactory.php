@@ -31,7 +31,7 @@ use Contao\ImageSizeItemModel;
 use Contao\ImageSizeModel;
 use Contao\Model;
 use Contao\StringUtil;
-use Webmozart\PathUtil\Path;
+use Symfony\Component\Filesystem\Path;
 
 class PictureFactory implements PictureFactoryInterface
 {
@@ -49,29 +49,27 @@ class PictureFactory implements PictureFactoryInterface
         'gif' => 8,
     ];
 
-    private $inner;
-    private $imageFactory;
-    private $resizer;
-    private $alternativeSizes;
     private $predefinedSizes;
-    private $projectDir;
 
-    public function __construct(ContaoPictureFactory $inner, ImageFactoryInterface $imageFactory, ResizerInterface $resizer, array $alternativeSizes, array $predefinedSizes, string $projectDir)
-    {
-        $this->inner = $inner;
-        $this->imageFactory = $imageFactory;
-        $this->resizer = $resizer;
-        $this->alternativeSizes = $alternativeSizes;
-        $this->predefinedSizes = $this->mergeImageSizes($predefinedSizes, $alternativeSizes);
-        $this->projectDir = $projectDir;
+    public function __construct(
+        private readonly ContaoPictureFactory $inner,
+        private readonly ImageFactoryInterface $imageFactory,
+        private readonly ResizerInterface $resizer,
+        private array $alternativeSizes,
+        array $predefinedSizes,
+        private readonly string $projectDir,
+    ) {
+        $this->predefinedSizes = $this->mergeImageSizes($predefinedSizes, $this->alternativeSizes);
     }
 
-    public function setDefaultDensities($densities): void
+    public function setDefaultDensities(string $densities): static
     {
         $this->inner->setDefaultDensities($densities);
+
+        return $this;
     }
 
-    public function create($path, $size = null): PictureInterface
+    public function create(ImageInterface|string $path, PictureConfiguration|array|int|string|null $size = null, ResizeOptions|null $options = null): PictureInterface
     {
         $size = StringUtil::deserialize($size);
 
@@ -100,7 +98,7 @@ class PictureFactory implements PictureFactoryInterface
                         $alternativeFile = $this->getAlternative($file, $item['alternative']);
                         $importantParts = $this->getImportantParts($alternativeFile ?? $file);
 
-                        if (null !== $alternativeFile || isset($importantParts[$item['alternative']])) {
+                        if ($alternativeFile || isset($importantParts[$item['alternative']])) {
                             $useAlternatives = true;
                             break;
                         }
@@ -119,7 +117,7 @@ class PictureFactory implements PictureFactoryInterface
                         $itemPath = $path;
                         $alternativeFile = null;
 
-                        if (!empty($item['alternative']) && null !== ($alternativeFile = $this->getAlternative($file, $item['alternative']))) {
+                        if (!empty($item['alternative']) && $alternativeFile = $this->getAlternative($file, $item['alternative'])) {
                             // Do not use Path::join here (https://github.com/contao/contao/pull/4596)
                             $itemPath = $this->projectDir.'/'.$alternativeFile->path;
                         }
@@ -144,7 +142,7 @@ class PictureFactory implements PictureFactoryInterface
                                     (float) $importantPart['x'],
                                     (float) $importantPart['y'],
                                     (float) $importantPart['width'],
-                                    (float) $importantPart['height']
+                                    (float) $importantPart['height'],
                                 ));
                             }
                         }
@@ -154,7 +152,7 @@ class PictureFactory implements PictureFactoryInterface
                         }
 
                         $picture = $this->inner->create($itemImage, [0, 0, $alternativeSizeName]);
-                        $sources = array_merge($sources, $picture->getSources());
+                        $sources = [...$sources, ...$picture->getSources()];
                         $sources[] = $picture->getImg();
 
                         ++$index;
@@ -172,7 +170,7 @@ class PictureFactory implements PictureFactoryInterface
                     }
 
                     $picture = $this->inner->create($path, [0, 0, $alternativeSizeName]);
-                    $sources = array_merge($sources, $picture->getSources());
+                    $sources = [...$sources, ...$picture->getSources()];
 
                     return new Picture($picture->getImg(), $sources);
                 }
@@ -181,7 +179,7 @@ class PictureFactory implements PictureFactoryInterface
             if ($this->alternativeSizes[$size[2]]['preCrop'] ?? false) {
                 $path = $this->cropToImportantPart($path);
             }
-        } elseif (is_numeric($size[2]) && null !== ($imageSize = ImageSizeModel::findByPk($size[2]))) {
+        } elseif (is_numeric($size[2]) && null !== ($imageSize = ImageSizeModel::findById($size[2]))) {
             if (null !== ($sizeItems = ImageSizeItemModel::findVisibleByPid($imageSize->id, ['order' => 'sorting ASC']))) {
                 $useAlternatives = false;
 
@@ -190,7 +188,7 @@ class PictureFactory implements PictureFactoryInterface
                         $alternativeFile = $this->getAlternative($file, $sizeItem->alternative);
                         $importantParts = $this->getImportantParts($alternativeFile ?? $file);
 
-                        if (null !== $alternativeFile || isset($importantParts[$sizeItem->alternative])) {
+                        if ($alternativeFile || isset($importantParts[$sizeItem->alternative])) {
                             $useAlternatives = true;
                             break;
                         }
@@ -203,12 +201,12 @@ class PictureFactory implements PictureFactoryInterface
                     foreach ($sizeItems as $sizeItem) {
                         $sizeItem->preCrop = $imageSize->preCrop;
                         $picture = $this->getPicture($file, $sizeItem);
-                        $sources = array_merge($sources, $picture->getSources());
+                        $sources = [...$sources, ...$picture->getSources()];
                         $sources[] = $picture->getImg();
                     }
 
                     $picture = $this->getPicture($file, $imageSize);
-                    $sources = array_merge($sources, $picture->getSources());
+                    $sources = [...$sources, ...$picture->getSources()];
 
                     $img = $picture->getImg();
 
@@ -232,7 +230,7 @@ class PictureFactory implements PictureFactoryInterface
         return $this->inner->create($path, $size);
     }
 
-    private function getAlternative(FilesModel $file, string $alternative): ?FilesModel
+    private function getAlternative(FilesModel $file, string $alternative): FilesModel|null
     {
         $alternatives = StringUtil::deserialize($file->alternatives, true);
 
@@ -256,7 +254,7 @@ class PictureFactory implements PictureFactoryInterface
     /**
      * Copy of Contao\CoreBundle\Image\PictureFactory::createConfigItem.
      */
-    private function createConfigItem(array $imageSize = null): PictureConfigurationItem
+    private function createConfigItem(array|null $imageSize = null): PictureConfigurationItem
     {
         $configItem = new PictureConfigurationItem();
         $resizeConfig = new ResizeConfiguration();
@@ -332,9 +330,7 @@ class PictureFactory implements PictureFactoryInterface
 
             usort(
                 $formats[$source],
-                static function ($a, $b) {
-                    return (self::FORMATS_ORDER[$a] ?? $a) <=> (self::FORMATS_ORDER[$b] ?? $b);
-                }
+                static fn ($a, $b) => (self::FORMATS_ORDER[$a] ?? $a) <=> (self::FORMATS_ORDER[$b] ?? $b),
             );
         }
 
@@ -349,7 +345,7 @@ class PictureFactory implements PictureFactoryInterface
         $path = $this->projectDir.'/'.$file->path;
         $alternativeFile = null;
 
-        if (!empty($sizeModel->alternative) && null !== ($alternativeFile = $this->getAlternative($file, $sizeModel->alternative))) {
+        if (!empty($sizeModel->alternative) && $alternativeFile = $this->getAlternative($file, $sizeModel->alternative)) {
             // Do not use Path::join here (https://github.com/contao/contao/pull/4596)
             $path = $this->projectDir.'/'.$alternativeFile->path;
         }
@@ -373,7 +369,7 @@ class PictureFactory implements PictureFactoryInterface
                     (float) $importantPart['x'],
                     (float) $importantPart['y'],
                     (float) $importantPart['width'],
-                    (float) $importantPart['height']
+                    (float) $importantPart['height'],
                 ));
             }
         }
@@ -408,7 +404,11 @@ class PictureFactory implements PictureFactoryInterface
             return [];
         }
 
-        return json_decode($file->importantParts, true);
+        try {
+            return json_decode((string) $file->importantParts, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return [];
+        }
     }
 
     /**
@@ -436,7 +436,7 @@ class PictureFactory implements PictureFactoryInterface
         ;
 
         $image = $this->resizer
-            ->resize($image, $config, (new ResizeOptions()))
+            ->resize($image, $config, new ResizeOptions())
             ->setImportantPart(null)
         ;
 

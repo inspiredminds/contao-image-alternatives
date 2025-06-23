@@ -14,30 +14,27 @@ namespace InspiredMinds\ContaoImageAlternatives\EventListener\DataContainer;
 
 use Contao\Config;
 use Contao\CoreBundle\DataContainer\PaletteManipulator;
+use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\Dbafs;
 use Contao\FilesModel;
 use Contao\StringUtil;
+use Symfony\Component\Filesystem\Path;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Contracts\Translation\TranslatorInterface;
-use tl_image_size_item;
-use Webmozart\PathUtil\Path;
 
 class ImageAlternativesListener
 {
-    private $requestStack;
-    private $translator;
-    private $alternatives;
-    private $projectDir;
-
-    public function __construct(RequestStack $requestStack, TranslatorInterface $translator, array $alternatives, string $projectDir)
-    {
-        $this->requestStack = $requestStack;
-        $this->translator = $translator;
-        $this->alternatives = $alternatives;
-        $this->projectDir = $projectDir;
+    public function __construct(
+        private readonly RequestStack $requestStack,
+        private readonly TranslatorInterface $translator,
+        private readonly array $alternatives,
+        private readonly string $projectDir,
+        private readonly array $validExtensions,
+    ) {
     }
 
+    #[AsCallback('tl_files', 'config.onload')]
     public function adjustDataContainer(DataContainer $dc): void
     {
         if ([] === $this->alternatives) {
@@ -60,7 +57,7 @@ class ImageAlternativesListener
             return;
         }
 
-        if ('folder' === $file->type || !\in_array($file->extension, explode(',', Config::get('validImageTypes')), true)) {
+        if ('folder' === $file->type || !\in_array($file->extension, $this->validExtensions, true)) {
             return;
         }
 
@@ -90,7 +87,7 @@ class ImageAlternativesListener
         $pm->applyToPalette('default', 'tl_files');
     }
 
-    public function alternativeLoadCallback($value, DataContainer $dc): ?string
+    public function alternativeLoadCallback(mixed $value, DataContainer $dc): string|null
     {
         $file = FilesModel::findByPath($dc->id);
 
@@ -101,7 +98,7 @@ class ImageAlternativesListener
         return $alternatives[$alternativeName] ?? null;
     }
 
-    public function alternativeSaveCallback($value, DataContainer $dc): ?string
+    public function alternativeSaveCallback(mixed $value, DataContainer $dc): string|null
     {
         $file = FilesModel::findByPath($dc->id);
 
@@ -116,6 +113,7 @@ class ImageAlternativesListener
         return null;
     }
 
+    #[AsCallback('tl_image_size_item', 'fields.alternative.options')]
     public function alternativeOptionsCallback(): array
     {
         $options = [];
@@ -127,9 +125,10 @@ class ImageAlternativesListener
         return $options;
     }
 
+    #[AsCallback('tl_image_size_item', 'list.sorting.child_record')]
     public function imageSizeItemChildRecordCallback(array $row): string
     {
-        $original = (new tl_image_size_item())->listImageSizeItem($row);
+        $original = (new \tl_image_size_item())->listImageSizeItem($row);
 
         if ($row['alternative']) {
             $alternative = $this->translator->trans($row['alternative'], [], 'image_alternatives');

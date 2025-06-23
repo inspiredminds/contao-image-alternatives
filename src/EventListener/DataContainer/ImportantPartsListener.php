@@ -3,38 +3,29 @@
 declare(strict_types=1);
 
 /*
- * This file is part of the Contao Image Alternatives extension.
- *
- * (c) inspiredminds
- *
- * @license LGPL-3.0-or-later
+ * (c) INSPIRED MINDS
  */
 
 namespace InspiredMinds\ContaoImageAlternatives\EventListener\DataContainer;
 
-use Contao\Config;
 use Contao\CoreBundle\DataContainer\PaletteManipulator;
-use Contao\CoreBundle\ServiceAnnotation\Callback;
+use Contao\CoreBundle\DependencyInjection\Attribute\AsCallback;
 use Contao\DataContainer;
 use Contao\Dbafs;
 use Contao\FilesModel;
+use Symfony\Component\Filesystem\Path;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Webmozart\PathUtil\Path;
 
 class ImportantPartsListener
 {
-    private $requestStack;
-    private $projectDir;
-
-    public function __construct(RequestStack $requestStack, string $projectDir)
-    {
-        $this->requestStack = $requestStack;
-        $this->projectDir = $projectDir;
+    public function __construct(
+        private readonly RequestStack $requestStack,
+        private readonly string $projectDir,
+        private readonly array $validExtensions,
+    ) {
     }
 
-    /**
-     * @Callback(table="tl_files", target="config.onload")
-     */
+    #[AsCallback('tl_files', 'config.onload')]
     public function adjustPalettes(DataContainer $dc): void
     {
         $request = $this->requestStack->getCurrentRequest();
@@ -53,22 +44,24 @@ class ImportantPartsListener
             return;
         }
 
-        if ('file' !== $file->type || !\in_array($file->extension, explode(',', Config::get('validImageTypes')), true)) {
+        if ('file' !== $file->type || !\in_array($file->extension, $this->validExtensions, true)) {
             return;
         }
 
         PaletteManipulator::create()
-            ->addField('importantParts', 'importantPartHeight')
+            ->addField('importantParts', null)
             ->applyToPalette('default', 'tl_files')
         ;
     }
 
-    /**
-     * @Callback(table="tl_files", target="fields.importantParts.load")
-     */
+    #[AsCallback('tl_files', 'fields.importantParts.load')]
     public function importantPartsLoadCallback($value, DataContainer $dc): string
     {
-        $importantParts = (!empty($value) ? json_decode($value, true) : []) ?: [];
+        try {
+            $importantParts = $value ? json_decode((string) $value, true, 512, JSON_THROW_ON_ERROR) : [];
+        } catch (\JsonException) {
+            $importantParts = [];
+        }
 
         $file = FilesModel::findByPath($dc->id);
 
@@ -81,15 +74,17 @@ class ImportantPartsListener
             ];
         }
 
-        return json_encode((object) $importantParts, \JSON_PRETTY_PRINT);
+        return json_encode((object) $importantParts, JSON_PRETTY_PRINT);
     }
 
-    /**
-     * @Callback(table="tl_files", target="fields.importantParts.save")
-     */
+    #[AsCallback('tl_files', 'fields.importantParts.save')]
     public function importantPartsSaveCallback($value, DataContainer $dc): string
     {
-        $importantParts = (!empty($value) ? json_decode($value, true) : []) ?: [];
+        try {
+            $importantParts = $value ? json_decode((string) $value, true, 512, JSON_THROW_ON_ERROR) : [];
+        } catch (\JsonException) {
+            $importantParts = [];
+        }
 
         $file = FilesModel::findByPath($dc->id);
 
@@ -101,11 +96,9 @@ class ImportantPartsListener
         $file->save();
 
         // Remove any invalid entries
-        $importantParts = array_filter($importantParts, function (array $importantPart): bool {
-            return (float) $importantPart['width'] > 0 && (float) $importantPart['height'] > 0;
-        });
+        $importantParts = array_filter($importantParts, static fn (array $importantPart): bool => (float) $importantPart['width'] > 0 && (float) $importantPart['height'] > 0);
 
         // "compress" JSON
-        return json_encode((object) $importantParts);
+        return json_encode((object) $importantParts, JSON_THROW_ON_ERROR);
     }
 }
