@@ -72,3 +72,11 @@ contao_image_alternatives:
         example:
             pre_crop: true
 ```
+
+
+## Attributions
+
+Development funded by:
+
+* [ncm](https://www.ncm.at/) - Net Communication Management GmbH
+* [nickname . Büro für visuelle Kommunikation](https://www.hofff.com/)
