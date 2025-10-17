@@ -29,7 +29,7 @@ class FolderDriver extends FolderParent
     {
         $row = parent::row($palette);
 
-        if ('name' === $this->strField && null !== $this->objActiveRecord && 'file' === $this->objActiveRecord->type) {
+        if ('preview' === $this->strField && null !== $this->objActiveRecord && 'file' === $this->objActiveRecord->type) {
             $row = preg_replace('~<script>Backend\\.editPreviewWizard\\(\\$\\(\'ctrl_preview_[a-z0-9]+\'\\)\\);</script>~', '', $row, -1, $count);
 
             if ($count > 0) {

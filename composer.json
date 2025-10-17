@@ -24,7 +24,7 @@
     ],
     "require": {
         "php": ">=8.2",
-        "contao/core-bundle": "^5.3",
+        "contao/core-bundle": "^5.3.40 || ^5.6.3",
         "symfony/config": "^6.4 || ^7.3",
         "symfony/dependency-injection": "^6.4 || ^7.3",
         "symfony/http-foundation": "^6.4 || ^7.3",
