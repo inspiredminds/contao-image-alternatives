@@ -295,7 +295,7 @@ class PictureFactory implements PictureFactoryInterface
     }
 
     /**
-     * Copy of Contao\CoreBundle\Image\PictureFactory::createConfig.
+     * Copy of Contao\CoreBundle\Image\PictureFactory::getFormats.
      *
      * @param ImageSizeModel|ImageSizeItemModel $sizeModel
      */
